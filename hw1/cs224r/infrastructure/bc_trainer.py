@@ -206,7 +206,16 @@ class BCTrainer:
         # HINT4: You want each of these collected rollouts to be of length self.params['ep_len']
 
         print("\nCollecting data to be used for training...")
-        paths, envsteps_this_batch = TODO
+        if itr == 0 and load_initial_expertdata is not None:
+            with open(load_initial_expertdata, 'rb') as f:  
+                paths = pickle.load(f)
+                envsteps_this_batch = sum([len(path['reward']) for path in paths])
+        else:
+            paths, envsteps_this_batch = utils.sample_trajectories(
+                self.env, collect_policy, self.params['batch_size'],
+                self.params['ep_len'], render=self.log_video)
+            print('Collected {} paths'.format(len(paths)))
+            print('Collected {} environment steps'.format(envsteps_this_batch))
 
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
         # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
@@ -225,17 +234,18 @@ class BCTrainer:
         """
         print('\nTraining agent using sampled data from replay buffer...')
         all_logs = []
+        print('Number of training steps per iteration: {}'.format(self.params['num_agent_train_steps_per_iter']))
         for train_step in range(self.params['num_agent_train_steps_per_iter']):
 
             # TODO sample some data from the data buffer
             # HINT1: use the agent's sample function
             # HINT2: how much data = self.params['train_batch_size']
-            ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = TODO
+            ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = self.agent.sample(self.params['train_batch_size'])
 
             # TODO use the sampled data to train an agent
             # HINT: use the agent's train function
             # HINT: keep the agent's training log for debugging
-            train_log = TODO
+            train_log = self.agent.train(ob_batch, ac_batch)
             all_logs.append(train_log)
         return all_logs
 
@@ -253,7 +263,13 @@ class BCTrainer:
         # HINT: query the policy (using the get_action function) with paths[i]["observation"]
         # and replace paths[i]["action"] with these expert labels
 
-        raise NotImplementedError
+        for i in range(len(paths)):
+            for j in range(len(paths[i]["observation"])):
+                exp_action = expert_policy.get_action(paths[i]["observation"][j])
+                paths[i]["action"][j] = exp_action
+
+        print('Done relabelling...\n\n')
+        return paths
 
     ####################################
     ####################################

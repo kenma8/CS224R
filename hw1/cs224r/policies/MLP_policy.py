@@ -105,7 +105,11 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             observation = obs[None]
 
         # TODO return the action that the policy prescribes
-        raise NotImplementedError
+        ob = ptu.from_numpy(observation.astype(np.float32))
+        action_dist = self.forward(ob)
+        action = action_dist.sample()
+        return action.cpu().numpy()
+
 
     def forward(self, observation: torch.FloatTensor) -> Any:
         """
@@ -121,7 +125,11 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         # return more flexible objects, such as a
         # `torch.distributions.Distribution` object. It's up to you!
         
-        raise NotImplementedError
+        mean = self.mean_net(observation)
+        std = torch.exp(self.logstd)
+        normal_dist = distributions.Normal(mean, std)
+        action_dist = distributions.Independent(normal_dist, 1)
+        return action_dist
 
     def update(self, observations, actions):
         """
@@ -134,7 +142,16 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         """
         # TODO: update the policy and return the loss. Recall that to update the policy
         # you need to backpropagate the gradient and step the optimizer.
-        loss = TODO
+        observations = np.array(observations, dtype=np.float32)
+        actions = np.array(actions, dtype=np.float32)
+        
+        self.optimizer.zero_grad()
+        obs = ptu.from_numpy(observations)
+        acts = ptu.from_numpy(actions)
+        action_dist = self.forward(obs)
+        loss = -action_dist.log_prob(acts).mean()
+        loss.backward()
+        self.optimizer.step()
 
         return {
             'Training Loss': ptu.to_numpy(loss),
