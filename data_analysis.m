@@ -14,19 +14,19 @@ figure;
 hold on;
 
 % Your error bar plots
-errorbar(iterations, mean_returns_1, std_returns_1, '-o', 'LineWidth', 1.5, 'Color', 'red');
-errorbar(iterations, mean_returns_2, std_returns_2, '-o', 'LineWidth', 1.5, 'Color', 'blue');
+% errorbar(iterations, mean_returns_1, std_returns_1, '-o', 'LineWidth', 1.5, 'Color', 'red');
+errorbar(iterations, mean_returns_2, std_returns_2, '-o', 'LineWidth', 1.5, 'Color', 'red');
 
 % Add horizontal dotted lines for expert policies
-yline(4714, '--', 'Ant Expert Policy', 'Color', 'red', ...
+yline(3773, '--',  'Color', 'green', ...
       'LineWidth', 1.5, 'LabelHorizontalAlignment', 'left');
 
-yline(3773, '--', 'Hopper Expert Policy', 'Color', 'blue', ...
+yline(1012, '--', 'Color', 'blue', ...
       'LineWidth', 1.5, 'LabelHorizontalAlignment', 'left');
 
 % Label and format
 xlabel('DAgger Iteration');
 ylabel('Mean Reward');
-title('Policy Performance over DAgger Iterations');
-legend('Ant Environment', 'Hopper Environment', 'Location', 'southeast');
+title('Hopper Policy Performance over DAgger Iterations');
+legend('Hopper Policy Performance', 'Expert Policy', 'Behavior Cloning Policy', 'Location', 'southeast');
 grid on;

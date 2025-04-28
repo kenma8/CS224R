@@ -264,9 +264,8 @@ class BCTrainer:
         # and replace paths[i]["action"] with these expert labels
 
         for i in range(len(paths)):
-            for j in range(len(paths[i]["observation"])):
-                exp_action = expert_policy.get_action(paths[i]["observation"][j])
-                paths[i]["action"][j] = exp_action
+            exp_action = expert_policy.get_action(paths[i]["observation"])
+            paths[i]["action"] = exp_action
 
         print('Done relabelling...\n\n')
         return paths
