@@ -118,6 +118,37 @@ class ACAgent:
 
         ### YOUR CODE HERE ###
 
+        # Sample next state actions from policy
+        with torch.no_grad():
+            next_actions_dist = self.actor(next_obs)
+            next_actions = next_actions_dist.sample(clip=self.stddev_clip)
+            h_action = torch.cat([next_obs, next_actions], dim=-1)
+        
+        # Compute Bellman targets
+        random_critics = random.sample(list(self.critic_target.critics), 2)
+        y = reward + discount * torch.min(random_critics[0](h_action),
+                                          random_critics[1](h_action))
+        
+        # Compute the loss
+        vec_loss = 0
+        y = y.detach()
+        preds = self.critic.forward(obs, action)
+        for pred in preds:
+            vec_loss += torch.pow((pred - y), 2)
+        loss = torch.mean(vec_loss)
+        metrics['loss'] = loss.item()
+
+        # Take a gradient step with respect to the critic parameters
+        self.critic_opt.zero_grad()
+        loss.backward()
+        self.critic_opt.step()
+
+        # Update the target critic parameters using exponential moving average
+        for critic, target_critic in zip(self.critic.critics, self.critic_target.critics):
+            critic_params = critic.parameters()
+            target_critic_params = target_critic.parameters()
+            for param, target_param in zip(critic_params, target_critic_params):
+                target_param.data.copy_(self.critic_target_tau * param.data + (1 - self.critic_target_tau) * target_param.data)
 
         #####################
         return metrics
@@ -151,7 +182,21 @@ class ACAgent:
             batch, self.device)
 
         ### YOUR CODE HERE ###
+        
+        # Sample actions from the actor
+        actions_dist = self.actor(obs)
+        actions = actions_dist.sample(clip=self.stddev_clip)
 
+        # Compute the objective that optimizes the actor to maximize the Q-value estimates from the critics
+        critic_values = self.critic.forward(obs, actions)
+        stacked_critic_values = torch.stack(critic_values)
+        loss = -stacked_critic_values.mean()
+        metrics['loss'] = loss.item()
+
+        # Take a gradient step on this objective with respect to the policy only
+        self.actor_opt.zero_grad()
+        loss.backward()
+        self.actor_opt.step()
 
         return metrics
 
@@ -184,6 +229,11 @@ class ACAgent:
         obs, action, _, _, _ = utils.to_torch(batch, self.device)
 
         ### YOUR CODE HERE ###
-
+        pred_actions_dist = self.actor(obs)
+        loss = -pred_actions_dist.log_prob(action).mean()
+        self.actor_opt.zero_grad()
+        loss.backward()
+        self.actor_opt.step()
+        metrics['loss'] = loss.item()
 
         return metrics
